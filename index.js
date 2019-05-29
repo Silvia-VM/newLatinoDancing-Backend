@@ -89,6 +89,16 @@ app.get("/scraping", async (req, res) => {
   }
 });
 
+//**Read */
+app.get("/", async (req, res) => {
+  try {
+    const events = await Event.find();
+    res.json(events);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 app.listen(3000, () => {
   // Demarage server
   console.log("Server has started");

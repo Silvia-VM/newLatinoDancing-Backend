@@ -1,0 +1,20 @@
+{
+  "name": "test-salsa",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "express": "^4.17.1",
+    "it": "^1.1.1",
+    "mongoose": "^5.5.11",
+    "scrape": "^0.2.3",
+    "scrape-it": "^5.1.4"
+  }
+}

@@ -14,8 +14,7 @@ const Event = mongoose.model("Event", {
   description: String,
   date: String,
   price: String,
-  adresse: String,
-  loc: Array
+  adresse: String
 }); //model structure demandé objet (clefs-valeurs)
 
 const Festival = mongoose.model("Festival", {

@@ -14,6 +14,7 @@
     "express": "^4.17.1",
     "it": "^1.1.1",
     "mongoose": "^5.5.11",
+    "react-native-geocoder": "^0.5.0",
     "scrape": "^0.2.3",
     "scrape-it": "^5.1.4"
   }

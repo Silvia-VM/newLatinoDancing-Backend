@@ -14,7 +14,8 @@ const Event = mongoose.model("Event", {
   description: String,
   date: String,
   price: String,
-  adresse: String
+  adresse: String,
+  coordinate: String
 }); //model structure demandé objet (clefs-valeurs)
 
 //scraping recherche de données.Creation d'une fonction que l'on rappel une deuxieme fois

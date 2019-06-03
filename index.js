@@ -4,6 +4,7 @@ const app = express();
 const scrapeIt = require("scrape-it");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
+const axios = require("axios");
 
 app.use(bodyParser.json());
 // Mongoose librairie pour utiliser et se connecter a MongoDB
@@ -11,11 +12,25 @@ mongoose.connect("mongodb://localhost/danse", { useNewUrlParser: true });
 const Event = mongoose.model("Event", {
   id: String,
   title: String,
+  horaire: String,
+  map: String,
+  facebook: String,
   description: String,
   date: String,
   price: String,
-  adresse: String
+  adresse: String,
+  latitude: String,
+  longitude: String
 }); //model structure demandé objet (clefs-valeurs)
+// const Map = mongoose.model("Map", {
+//   id: String,
+//   latitude: String,
+//   longitude: String,
+//   author: {
+//     type: mongoose.Schema.Types.ObjectId,
+//     ref: "Event"
+//   }
+// });
 
 const Festival = mongoose.model("Festival", {
   id: String,
@@ -43,6 +58,11 @@ let scraping = callback => {
             attr: "id"
           },
           title: { selector: ".summary" },
+          horaire: { selector: "strong" },
+          map: { selector: "a", attr: "href" },
+          facebook: {
+            selector: "a"
+          },
           description: { selector: ".comm" },
           date: {
             selector: "abbr",
@@ -78,20 +98,59 @@ app.get("/scraping", async (req, res) => {
       if (err) {
         res.status(400).json({ error: error.message });
       } else {
+        const extractAddress = str => {
+          newStr = str.replace(/ /g, "+");
+          streetAdressBeta = newStr.split("750")[0];
+          firstArray = streetAdressBeta.split("");
+          firstArray.pop();
+          if (
+            firstArray[firstArray.length - 1] === "," ||
+            firstArray[firstArray.length - 1] === "."
+          ) {
+            firstArray.pop();
+          }
+          finalAdresse = firstArray.join("");
+          return finalAdresse;
+        };
+        const extractZip = str => {
+          newStr = str.replace(/ /g, "+");
+          zipCode = newStr.split("750")[1];
+          zipBeta = zipCode.split("+")[0].split("");
+          zipBeta.unshift("750");
+          finalZip = zipBeta.join("");
+          return finalZip;
+        };
+
         data.data.forEach(async element => {
+          // console.log("adresse", element.adresse);
+          // replace(element.adresse);
+          const response = await axios.get(
+            `https://api-adresse.data.gouv.fr/search/?q=${extractAddress(
+              element.adresse
+            )}&postcode=${extractZip(element.adresse)} `
+            // 36+boulevard+de+la+bastille"
+          );
           // on boucle sur chaque élément du tableau data.data. On boucle dans data.data parce que "data" est objet, or on ne peut boucler que sur un tableau.
-          const result = await Event.findOne({ id: element.id }); // on vérifie (pour chaque élément de a boucle) s'il est déjà présent dans la base de données
+          const result = await Event.findById(element._id); // on vérifie (pour chaque élément de a boucle) s'il est déjà présent dans la base de données
           if (!result) {
             // s'il n'est pas présent
             const newEvent = new Event({
-              // on l'ajoute à notre base de données, conformément au Model "Event"
-              id: element.id,
+              //   // on l'ajoute à notre base de données, conformément au Model "Event"
+              id: element._id,
               title: element.title,
+              horaire: element.horaire,
+              map: element.map,
+              facebook: element.facebook,
               description: element.description,
               date: element.date,
               price: element.price,
-              adresse: element.adresse
+              adresse: element.adresse,
+              longitude: response.data.features[0].geometry.coordinates[0],
+              latitude: response.data.features[0].geometry.coordinates[1]
+              // latitude: element.latitude.replace(str)[0],
+              // longitude: element.longitude.replace(str)[1]
             });
+
             await newEvent.save(); // on sauvegrade notre nouvel Event
           }
         });
@@ -125,8 +184,8 @@ let scraping2 = callback => {
           id: {
             attr: "id"
           },
-          title: { selector: "h2" },
-          adresse: { selector: "h2" } //.match(/Du(.*)à/)[1]
+          title: { selector: "h2" }
+          // adresse: listItem.match(/Du(.*)à/)[1]
         }
       }
     },

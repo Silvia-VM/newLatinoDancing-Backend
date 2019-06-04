@@ -12,6 +12,7 @@ mongoose.connect("mongodb://localhost/danse", { useNewUrlParser: true });
 const Event = mongoose.model("Event", {
   id: String,
   title: String,
+  tags: Array,
   horaire: String,
   map: String,
   facebook: String,
@@ -58,7 +59,20 @@ let scraping = callback => {
             attr: "id"
           },
           title: { selector: ".summary" },
-          horaire: { selector: "strong" },
+          tags: {
+            listItem: ".description > p:first-child > strong .label"
+            // convert: str => {
+            //   const tags = str.split(",")[0].split(" ")[0];
+            //   return tags.split(" ").map(tag => tag);
+          },
+
+          horaire: {
+            selector: ".soiree-info > .description > p:first-child > strong",
+            convert: str => {
+              let hour = str.split(",")[0].split("  ")[1];
+              return hour;
+            }
+          },
           map: { selector: "a", attr: "href" },
           facebook: {
             selector: "a"
@@ -68,7 +82,7 @@ let scraping = callback => {
             selector: "abbr",
             attr: "title"
           },
-          prix: {
+          price: {
             selector: "strong",
             convert: str => {
               let price = str.split(",")[1].split("€")[0]; // permet de dégager la valeur du prix en eliminant les horaires et le contenu des autres balises
@@ -90,7 +104,7 @@ let scraping = callback => {
     }
   );
 };
-// rajoute un nouvel Event en fonction de id avec tout les elements pui sauvegardé dans newEvent . Si erreur alor alors on rappel la fonction.
+// rajoute un nouvel Event en fonction de id avec tous les elements puis sauvegarder dans newEvent . Si erreur alors on rappelle la fonction.
 app.get("/scraping", async (req, res) => {
   try {
     scraping((data, err) => {
@@ -122,7 +136,6 @@ app.get("/scraping", async (req, res) => {
         };
 
         data.data.forEach(async element => {
-          // console.log("adresse", element.adresse);
           // replace(element.adresse);
           const response = await axios.get(
             `https://api-adresse.data.gouv.fr/search/?q=${extractAddress(
@@ -131,13 +144,14 @@ app.get("/scraping", async (req, res) => {
             // 36+boulevard+de+la+bastille"
           );
           // on boucle sur chaque élément du tableau data.data. On boucle dans data.data parce que "data" est objet, or on ne peut boucler que sur un tableau.
-          const result = await Event.findById(element._id); // on vérifie (pour chaque élément de a boucle) s'il est déjà présent dans la base de données
+          const result = await Event.findOne({ id: element.id }); // on vérifie (pour chaque élément de a boucle) s'il est déjà présent dans la base de données
           if (!result) {
             // s'il n'est pas présent
             const newEvent = new Event({
               //   // on l'ajoute à notre base de données, conformément au Model "Event"
-              id: element._id,
+              id: element.id,
               title: element.title,
+              tags: element.tags,
               horaire: element.horaire,
               map: element.map,
               facebook: element.facebook,
@@ -151,7 +165,7 @@ app.get("/scraping", async (req, res) => {
               // longitude: element.longitude.replace(str)[1]
             });
 
-            await newEvent.save(); // on sauvegrade notre nouvel Event
+            await newEvent.save(); // on sauvegarde notre nouvel Event
           }
         });
         res.status(200).json({ message: "Scraping done" }); // la réponse qu'enverra le serveur si tout se passe bien

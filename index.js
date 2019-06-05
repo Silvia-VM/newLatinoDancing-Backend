@@ -5,6 +5,22 @@ const scrapeIt = require("scrape-it");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const axios = require("axios");
+
+//Création des SignIn et SignUp suivit de la procédure de React Cours 12
+const uid2 = require("uid2");
+const randomString = uid2(16);
+
+const SHA256 = require("crypto-js/sha256");
+const encBase64 = require("crypto-js/enc-base64");
+
+// const password = req.body.password;
+// const token = uid2(16);
+// const salt = uid2(16);
+// const hash = SHA256(password + salt).toString(encBase64);
+
+//Après l'installation du package crypto, j'ai mis la constante suivante faire référence à la doc :
+var AES = require("crypto-js/aes");
+
 // const dateFns = require("date-fns");
 
 app.use(bodyParser.json());
@@ -47,6 +63,22 @@ const Cours = mongoose.model("Cours", {
   ville: String,
   site: String
 });
+
+const User = mongoose.model("User", {
+  id: String,
+  email: String,
+  password: String,
+  token: String, // Le token permettra d'authentifier l'utilisateur
+  hash: String,
+  salt: String
+});
+
+// const SignUp = mongoose.model("SignUp", {
+//   id: String,
+//   name: String,
+//   email: String,
+//   password: String
+// });
 
 //scraping recherche de données.Creation d'une fonction que l'on rappel une deuxieme fois
 let scraping = callback => {
@@ -211,46 +243,46 @@ app.get("/events", async (req, res) => {
   }
 });
 
-// **Create**
-app.post("/create", async (req, res) => {
-  try {
-    const newEvent = new Event({
-      id: req.body.id,
-      title: req.body.title,
-      tags: req.body.tags,
-      horaire: req.body.horaire,
-      map: req.body.map,
-      facebook: req.body.facebook,
-      description: req.body.description,
-      date: req.body.date,
-      price: req.body.price,
-      adresse: req.body.adresse,
-      longitude: req.body.longitude,
-      latitude: req.body.longitude
-    });
-    await newEvent.save();
-    res.json({ message: "Created" });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
+// // **Create**
+// app.post("/create", async (req, res) => {
+//   try {
+//     const newEvent = new Event({
+//       id: req.body.id,
+//       title: req.body.title,
+//       tags: req.body.tags,
+//       horaire: req.body.horaire,
+//       map: req.body.map,
+//       facebook: req.body.facebook,
+//       description: req.body.description,
+//       date: req.body.date,
+//       price: req.body.price,
+//       adresse: req.body.adresse,
+//       longitude: req.body.longitude,
+//       latitude: req.body.longitude
+//     });
+//     await newEvent.save();
+//     res.json({ message: "Created" });
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// });
 
-// **Delete**
-app.post("/delete", async (req, res) => {
-  try {
-    if (element.id) {
-      const event = await Event.findOne({ id: element.id });
-      // Autre manière de trouver un document à partir d'un `id` :
-      // const student = await Student.findById(req.body.id);
-      await event.remove();
-      res.json({ message: "Removed" });
-    } else {
-      res.status(400).json({ message: "Missing id" });
-    }
-  } catch (error) {
-    res.status(400).json({ error: error.message });
-  }
-});
+// // **Delete**
+// app.post("/delete", async (req, res) => {
+//   try {
+//     if (element.id) {
+//       const event = await Event.findOne({ id: element.id });
+//       // Autre manière de trouver un document à partir d'un `id` :
+//       // const student = await Student.findById(req.body.id);
+//       await event.remove();
+//       res.json({ message: "Removed" });
+//     } else {
+//       res.status(400).json({ message: "Missing id" });
+//     }
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// });
 
 //__________________________________________________________________________________________________
 // Scraping festival
@@ -373,6 +405,67 @@ app.get("/cours", async (req, res) => {
     res.status(400).json({ error: error.message });
   }
 });
+
+//__________________________________________________________________________________________________
+// SignUp & SignIn
+
+// **Create**
+
+app.post("/signup", async (req, res) => {
+  try {
+    const token = uid2(16);
+    const salt = uid2(16);
+    const hash = SHA256(req.body.password + salt).toString(encBase64);
+
+    const user = new User({
+      name: req.body.name,
+      email: req.body.email,
+      salt: salt,
+      hash: hash,
+      token: token
+    });
+    await user.save();
+    res.json({ message: "Created" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// **Read**
+app.post("/signin", async (req, res) => {
+  try {
+    const user = await User.findOne({ email: req.body.email });
+    if (user) {
+      let newHash = SHA256(req.body.password + user.salt).toString(encBase64);
+      if (newHash === user.hash) {
+        return res.status(200).json(user.token);
+      } else {
+        return res.status(401).json({ message: "Password incorrect" });
+      }
+    } else {
+      return res.status(401).json({ message: "email incorrect" });
+    }
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// **Delete**
+// app.post("/deleteCustomers", async (req, res) => {
+//   try {
+//     if (req.body.id) {
+//       const SignIn = await SignIn.findOne({ _id: req.body.id });
+//       // Autre manière de trouver un document à partir d'un `id` :
+//       // const student = await Student.findById(req.body.id);
+//       await SignIn.remove();
+//       res.json({ message: "Removed" });
+//     } else {
+//       res.status(400).json({ message: "Missing id" });
+//     }
+//   } catch (error) {
+//     res.status(400).json({ error: error.message });
+//   }
+// });
 
 app.listen(3000, () => {
   // Demarage server

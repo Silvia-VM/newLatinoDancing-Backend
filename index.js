@@ -5,6 +5,7 @@ const scrapeIt = require("scrape-it");
 const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const axios = require("axios");
+// const dateFns = require("date-fns");
 
 app.use(bodyParser.json());
 // Mongoose librairie pour utiliser et se connecter a MongoDB
@@ -145,6 +146,9 @@ app.get("/scraping", async (req, res) => {
           );
           // on boucle sur chaque élément du tableau data.data. On boucle dans data.data parce que "data" est objet, or on ne peut boucler que sur un tableau.
           const result = await Event.findOne({ id: element.id }); // on vérifie (pour chaque élément de a boucle) s'il est déjà présent dans la base de données
+          // let d = new Date(element.date);
+          // let sevenDaysPast = d.setDate(d.getDate() - 7);
+          // console.log(sevenDaysPast);
           if (!result) {
             // s'il n'est pas présent
             const newEvent = new Event({
@@ -166,6 +170,27 @@ app.get("/scraping", async (req, res) => {
             });
 
             await newEvent.save(); // on sauvegarde notre nouvel Event
+          } else {
+            let dateEvent = new Date(element.date);
+            let dateNow = new Date();
+            let diff = dateEvent - dateNow;
+            // console.log(dateEvent);
+            // console.log(typeof dateEvent);
+            console.log(diff);
+            if (diff < 0) {
+              await result.remove();
+            }
+
+            // else {
+            //   let diff = NaN;
+            //   let dateEvent = new Date(element.date);
+            //   console.log(dateEvent);
+            // }
+
+            // if (Event.date >= new Date()) {
+            //   await Event.remove();
+            // }
+            // await Event.remove();
           }
         });
         res.status(200).json({ message: "Scraping done" }); // la réponse qu'enverra le serveur si tout se passe bien
@@ -181,6 +206,47 @@ app.get("/events", async (req, res) => {
   try {
     const events = await Event.find();
     res.json(events);
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// **Create**
+app.post("/create", async (req, res) => {
+  try {
+    const newEvent = new Event({
+      id: req.body.id,
+      title: req.body.title,
+      tags: req.body.tags,
+      horaire: req.body.horaire,
+      map: req.body.map,
+      facebook: req.body.facebook,
+      description: req.body.description,
+      date: req.body.date,
+      price: req.body.price,
+      adresse: req.body.adresse,
+      longitude: req.body.longitude,
+      latitude: req.body.longitude
+    });
+    await newEvent.save();
+    res.json({ message: "Created" });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// **Delete**
+app.post("/delete", async (req, res) => {
+  try {
+    if (element.id) {
+      const event = await Event.findOne({ id: element.id });
+      // Autre manière de trouver un document à partir d'un `id` :
+      // const student = await Student.findById(req.body.id);
+      await event.remove();
+      res.json({ message: "Removed" });
+    } else {
+      res.status(400).json({ message: "Missing id" });
+    }
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

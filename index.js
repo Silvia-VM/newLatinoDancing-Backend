@@ -38,7 +38,8 @@ const Event = mongoose.model("Event", {
   price: String,
   adresse: String,
   latitude: String,
-  longitude: String
+  longitude: String,
+  vote: { Type: Number, default: 0 }
 }); //model structure demandé objet (clefs-valeurs)
 // const Map = mongoose.model("Map", {
 //   id: String,
@@ -70,7 +71,13 @@ const User = mongoose.model("User", {
   password: String,
   token: String, // Le token permettra d'authentifier l'utilisateur
   hash: String,
-  salt: String
+  salt: String,
+  voted: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Event"
+    }
+  ]
 });
 
 // const SignUp = mongoose.model("SignUp", {
@@ -435,16 +442,29 @@ app.post("/signup", async (req, res) => {
 app.post("/signin", async (req, res) => {
   try {
     const user = await User.findOne({ email: req.body.email });
+
     if (user) {
       let newHash = SHA256(req.body.password + user.salt).toString(encBase64);
       if (newHash === user.hash) {
-        return res.status(200).json(user.token);
+        return res.status(200).json({ token: user.token });
       } else {
         return res.status(401).json({ message: "Password incorrect" });
       }
     } else {
       return res.status(401).json({ message: "email incorrect" });
     }
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+app.post("/voted", async (req, res) => {
+  try {
+    const votedEvent = await Event.findOne({ id: req.body.eventId });
+    const userVoter = await User.findOne({ token: req.body.token });
+    votedEvent.vote = votedEvent.vote + 1;
+    userVoter.voted.push(votedEvent._id);
+    await votedEvent.save();
+    await userVoter.save();
   } catch (error) {
     res.status(400).json({ error: error.message });
   }

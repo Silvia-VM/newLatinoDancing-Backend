@@ -67,6 +67,7 @@ const Cours = mongoose.model("Cours", {
 
 const User = mongoose.model("User", {
   id: String,
+  name: String,
   email: String,
   password: String,
   token: String, // Le token permettra d'authentifier l'utilisateur
@@ -432,7 +433,7 @@ app.post("/signup", async (req, res) => {
       token: token
     });
     await user.save();
-    res.json({ message: "Created" });
+    res.json(user);
   } catch (error) {
     res.status(400).json({ error: error.message });
   }
@@ -446,7 +447,9 @@ app.post("/signin", async (req, res) => {
     if (user) {
       let newHash = SHA256(req.body.password + user.salt).toString(encBase64);
       if (newHash === user.hash) {
+
         return res.status(200).json({ token: user.token });
+
       } else {
         return res.status(401).json({ message: "Password incorrect" });
       }
